@@ -8,10 +8,12 @@ def main():
     parser.add_argument("invoice_json_file_path")
     args = parser.parse_args()
 
-    Statement.statement(
-        get_data_from_json(args.invoice_json_file_path),
+    statement = Statement.statement(
+        get_data_from_json(args.invoice_json_file_path)[0],
         get_data_from_json("plays")
     )
+
+    print(statement)
 
 if __name__ == "__main__":
     main()
