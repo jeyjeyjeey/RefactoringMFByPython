@@ -16,6 +16,11 @@ setup(
     extras_require={
         'dev': [
             'pytest>=3',
+            'black',
+            'flake8',
+            'isort',
+            'pylint',
+            'autopep8'
         ],
     },
     entry_points='''
