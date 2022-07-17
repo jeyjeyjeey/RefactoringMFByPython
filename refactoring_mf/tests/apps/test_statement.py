@@ -37,8 +37,8 @@ class StatementTestCase(TestCase):
             "You earned 47 credits"
         ]
 
-        actual_separated = Statement.statement(invoice[0], plays).split("\n")
+        statement = Statement()
+        actual_separated = statement(invoice[0], plays).split("\n")
         
         for actual, expected in zip(actual_separated, expected_lines):
             assert actual == expected
-            
