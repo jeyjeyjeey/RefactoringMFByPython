@@ -7,19 +7,14 @@ class Statement:
         self.invoice = invoice
         self.plays = plays
 
-    def play_for(self, playID: str) -> str:
-        return self.plays[playID]
-
     def __call__(self) -> str:
-        total_amount: int = 0
         result = f'Statement for {self.invoice["customer"]}\n'
 
         for performance in self.invoice["performances"]:
             result += f'    {self.play_for(performance["playID"])["name"]}: '
             result += f"{Statement.usd(self.amount_for(performance))}"
             result += f' ({performance["audience"]} seats)\n'
-            total_amount += self.amount_for(performance)
-        result += f"Amount owed is {Statement.usd(total_amount)}\n"
+        result += f"Amount owed is {Statement.usd(self.total_amount())}\n"
         result += f"You earned {self.total_volume_credits()} credits\n"
         return result
 
@@ -38,8 +33,10 @@ class Statement:
             raise Exception(
                 f'Unknown type: {self.play_for(performance["playID"])["type"]}'
             )
-
         return result
+
+    def play_for(self, playID: str) -> str:
+        return self.plays[playID]
 
     def volume_credits_for(self, performance: Dict[str, Any]):
         result: int = 0
@@ -53,6 +50,12 @@ class Statement:
         for performance in self.invoice["performances"]:
             volume_credits += self.volume_credits_for(performance)
         return volume_credits
+
+    def total_amount(self):
+        total_amount: int = 0
+        for performance in self.invoice["performances"]:
+            total_amount += self.amount_for(performance)
+        return total_amount
 
     @staticmethod
     def usd(value: float) -> str:

@@ -1,5 +1,4 @@
 import pytest
-
 from tests.apps import fixtures
 
 from refactoring_mf.apps.statement import Statement
@@ -77,5 +76,12 @@ class TestStatement:
         sut = Statement(fixtures.invoice[0], fixtures.plays)
         actual = sut.total_volume_credits()
         expected = 47
+
+        assert actual == expected
+
+    def test_total_amount(self):
+        sut = Statement(fixtures.invoice[0], fixtures.plays)
+        actual = sut.total_amount()
+        expected = 173000
 
         assert actual == expected
