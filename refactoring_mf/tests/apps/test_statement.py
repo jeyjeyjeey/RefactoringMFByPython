@@ -7,21 +7,6 @@ from refactoring_mf.apps.statement import Statement
 
 class TestStatement:
     def test_call(self):
-        invoice = [
-            {
-                "customer": "BigCo",
-                "performances": [
-                    {"playID": "hamlet", "audience": 55},
-                    {"playID": "as-like", "audience": 35},
-                    {"playID": "othello", "audience": 40},
-                ],
-            }
-        ]
-        plays = {
-            "hamlet": {"name": "Hamlet", "type": "tragedy"},
-            "as-like": {"name": "As You Like It", "type": "comedy"},
-            "othello": {"name": "Othello", "type": "tragedy"},
-        }
         expected_lines = [
             "Statement for BigCo",
             "    Hamlet: $650.00 (55 seats)",
@@ -31,7 +16,7 @@ class TestStatement:
             "You earned 47 credits",
         ]
 
-        sut = Statement(invoice[0], plays)
+        sut = Statement(fixtures.invoice[0], fixtures.plays)
         actual_separated = sut().split("\n")
 
         for actual, expected in zip(actual_separated, expected_lines):
@@ -85,5 +70,12 @@ class TestStatement:
     def test_volume_credits_for(self, performance, expected):
         sut = Statement({}, fixtures.plays)
         actual = sut.volume_credits_for(performance)
+
+        assert actual == expected
+
+    def test_total_volume_credits(self):
+        sut = Statement(fixtures.invoice[0], fixtures.plays)
+        actual = sut.total_volume_credits()
+        expected = 47
 
         assert actual == expected
