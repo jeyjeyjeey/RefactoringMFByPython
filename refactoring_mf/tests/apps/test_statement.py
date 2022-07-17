@@ -1,9 +1,10 @@
 from unittest import TestCase
+import pytest
 
 from refactoring_mf.apps.statement import Statement
 
-class StatementTestCase(TestCase):
-     def test_statement(self):
+class TestStatement:
+    def test_statement(self):
         invoice = [
             {
                 "customer": "BigCo",
@@ -37,8 +38,44 @@ class StatementTestCase(TestCase):
             "You earned 47 credits"
         ]
 
-        statement = Statement()
-        actual_separated = statement(invoice[0], plays).split("\n")
+        sut = Statement(invoice[0], plays)
+        actual_separated = sut().split("\n")
         
         for actual, expected in zip(actual_separated, expected_lines):
             assert actual == expected
+
+    amount_for_inputs = [
+        (
+            {"name": "Hamlet", "type": "tragedy"},
+            {
+                "playID": "hamlet",
+                "audience": 55
+            },
+            65000
+        ),
+        (
+            {"name": "As You Like It", "type": "comedy"},
+            {
+                "playID": "as-like",
+                "audience": 35
+            },
+            58000
+        ),
+    ]
+    @pytest.mark.parametrize("play, performance, expected", amount_for_inputs)
+    def test_amount_for(self, play, performance, expected):
+        sut = Statement({}, {})
+        actual = sut.amount_for(play, performance)
+        
+        assert actual == expected
+
+    def test_amount_for_with_unknown_type(self):
+        play = {"name": "X", "type": "XX"},
+        perfomance = {
+            "playID": "XXX",
+            "audience": 99
+        },
+
+        sut = Statement({}, {})
+        with pytest.raises(Exception):
+            actual = sut.amount_for(play, perfomance)

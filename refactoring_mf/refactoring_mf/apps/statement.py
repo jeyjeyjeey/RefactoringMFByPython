@@ -3,20 +3,22 @@ from typing import Dict, Any
 
 
 class Statement:
+    def __init__(self, invoice: Dict[str, Any], plays: Dict[str, Any]):
+        self.invoice = invoice
+        self.plays = plays
 
-    @staticmethod
-    def format_currency(value: float) -> str:
-        return f'${value:,.2f}'
+    def play_for(self, playID: str) -> str:
+        return self.plays[playID]
 
-    def __call__(self, invoice: Dict[str, Any], plays: Dict[str, Any]) -> str:
+    def __call__(self) -> str:
         total_amount: int = 0
         volume_credits: int = 0
-        result = f'Statement for {invoice["customer"]}\n'
+        result = f'Statement for {self.invoice["customer"]}\n'
 
-        for perf in invoice["performances"]:
-            play = plays[perf["playID"]]
+        for perf in self.invoice["performances"]:
+            play = self.play_for(perf["playID"])
             
-            this_amount = self.amountFor(play, perf)
+            this_amount = self.amount_for(play, perf)
 
             # add volume credits
             volume_credits += max(perf['audience'] - 30, 0)
@@ -29,18 +31,22 @@ class Statement:
         result += f'You earned {volume_credits} credits\n'
         return result
 
-    def amountFor(self, play: Dict[str, Any], perf: Dict[str, Any]):
-        this_amount = 0
+    def amount_for(self, play: Dict[str, Any], performance: Dict[str, Any]):
+        result = 0
         if play["type"] == "tragedy":
-            this_amount = 40000
-            if perf["audience"] > 30:
-                this_amount += 1000 * (perf["audience"] - 30)
+            result = 40000
+            if performance["audience"] > 30:
+                result += 1000 * (performance["audience"] - 30)
         elif play["type"] == "comedy":
-            this_amount = 30000
-            if perf['audience'] > 20:
-                this_amount += 10000 + 500 * (perf["audience"] - 20)
-            this_amount += 300 * perf["audience"]
+            result = 30000
+            if performance['audience'] > 20:
+                result += 10000 + 500 * (performance["audience"] - 20)
+            result += 300 * performance["audience"]
         else:
             raise Exception(f'Unknown type: {play["type"]}')
 
-        return this_amount
+        return result
+
+    @staticmethod
+    def format_currency(value: float) -> str:
+        return f'${value:,.2f}'
