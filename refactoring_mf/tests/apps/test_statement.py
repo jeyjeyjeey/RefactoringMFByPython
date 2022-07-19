@@ -1,3 +1,4 @@
+from unittest.mock import patch
 import pytest
 from tests.apps import fixtures
 
@@ -5,7 +6,14 @@ from refactoring_mf.apps.statement import Statement
 
 
 class TestStatement:
-    def test_call(self):
+    @patch("refactoring_mf.apps.statement.Statement.render_plain_text")
+    def test_call(self, render_plain_text):
+        sut = Statement({}, {})
+        sut()
+
+        render_plain_text.has_called_assert_once()
+
+    def test_render_plain_text(self):
         expected_lines = [
             "Statement for BigCo",
             "    Hamlet: $650.00 (55 seats)",
@@ -16,7 +24,9 @@ class TestStatement:
         ]
 
         sut = Statement(fixtures.invoice[0], fixtures.plays)
-        actual_separated = sut().split("\n")
+        actual_separated = sut.render_plain_text(
+            fixtures.invoice[0], fixtures.plays
+        ).split("\n")
 
         for actual, expected in zip(actual_separated, expected_lines):
             assert actual == expected
@@ -62,6 +72,15 @@ class TestStatement:
             0,
         ),
     ]
+
+    def test_play_for(self):
+        performance = {"playID": "as-like", "audience": 35}
+        expected = {"name": "As You Like It", "type": "comedy"}
+
+        sut = Statement({}, fixtures.plays)
+        actual = sut.play_for(performance)
+
+        assert actual == expected
 
     @pytest.mark.parametrize(
         "performance, expected", test_volume_credits_for_inputs
