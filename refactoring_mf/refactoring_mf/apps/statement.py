@@ -11,7 +11,7 @@ class StatementData:
     total_volume_credits: int
 
 
-class Statement:
+class StatementDataCreator:
     def __init__(self, invoice: Dict[str, Any], plays: Dict[str, Any]):
         self.invoice = invoice
         self.plays = plays
@@ -27,27 +27,12 @@ class Statement:
         return result
 
     def __call__(self) -> str:
-        statement_data = StatementData(
+        return StatementData(
             self.invoice["customer"],
             self.invoice["performances"],
             self.total_amount(self.invoice["performances"]),
             self.total_volume_credits(self.invoice["performances"]),
         )
-        return self.render_plain_text(statement_data)
-
-    def render_plain_text(
-        self,
-        data: StatementData,
-    ) -> str:
-        result = f"Statement for {data.customer}\n"
-
-        for performance in data.performances:
-            result += f'    {performance["play"]["name"]}: '
-            result += self.usd(performance["amount"])
-            result += f' ({performance["audience"]} seats)\n'
-        result += f"Amount owed is {self.usd(data.total_amount)}\n"
-        result += f"You earned {data.total_volume_credits} credits\n"
-        return result
 
     def amount_for(self, performance: Dict[str, Any]):
         result = 0
@@ -86,5 +71,24 @@ class Statement:
             total_amount += performance["amount"]
         return total_amount
 
-    def usd(self, value: float) -> str:
+
+class StatementRenderer:
+    @staticmethod
+    def render_plain_text(
+        data: StatementData,
+    ) -> str:
+        result = f"Statement for {data.customer}\n"
+
+        for performance in data.performances:
+            result += f'    {performance["play"]["name"]}: '
+            result += StatementRenderer.usd(performance["amount"])
+            result += f' ({performance["audience"]} seats)\n'
+        result += (
+            f"Amount owed is {StatementRenderer.usd(data.total_amount)}\n"
+        )
+        result += f"You earned {data.total_volume_credits} credits\n"
+        return result
+
+    @staticmethod
+    def usd(value: float) -> str:
         return f"${value/100:,.2f}"

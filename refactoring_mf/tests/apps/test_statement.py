@@ -2,13 +2,17 @@ from unittest.mock import patch
 import pytest
 from tests.apps import fixtures
 
-from refactoring_mf.apps.statement import Statement, StatementData
+from refactoring_mf.apps.statement import (
+    StatementDataCreator,
+    StatementData,
+    StatementRenderer,
+)
 
 
-class TestStatement:
-    @patch("refactoring_mf.apps.statement.Statement.render_plain_text")
+class TestStatementDataCreator:
+    @patch("refactoring_mf.apps.statement.StatementRenderer.render_plain_text")
     def test_call(self, render_plain_text):
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         statement_data = StatementData(
             "customer",
             "performances",
@@ -29,14 +33,11 @@ class TestStatement:
             "You earned 47 credits",
         ]
 
-        sut = Statement(fixtures.invoice, fixtures.plays)
-        data = StatementData(
-            sut.invoice["customer"],
-            sut.invoice["performances"],
-            sut.total_amount(sut.invoice["performances"]),
-            sut.total_volume_credits(sut.invoice["performances"]),
-        )
-        actual_separated = sut.render_plain_text(data).split("\n")
+        statement_data = StatementDataCreator(
+            fixtures.invoice, fixtures.plays
+        )()
+        sut = StatementRenderer()
+        actual_separated = sut.render_plain_text(statement_data).split("\n")
 
         for actual, expected in zip(actual_separated, expected_lines):
             assert actual == expected
@@ -64,7 +65,7 @@ class TestStatement:
 
     @pytest.mark.parametrize("play, performance, expected", amount_for_inputs)
     def test_amount_for(self, play, performance, expected):
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         actual = sut.amount_for(performance)
 
         assert actual == expected
@@ -78,7 +79,7 @@ class TestStatement:
             },
         )
 
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         with pytest.raises(Exception):
             sut.amount_for(perfomance)
 
@@ -93,7 +94,7 @@ class TestStatement:
             "type": "comedy",
         }
 
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         actual = sut.play_for(performance)
 
         assert actual == expected
@@ -129,13 +130,13 @@ class TestStatement:
         "performance, expected", test_volume_credits_for_inputs
     )
     def test_volume_credits_for(self, performance, expected):
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         actual = sut.volume_credits_for(performance)
 
         assert actual == expected
 
     def test_total_volume_credits(self):
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         data = StatementData(
             "customer",
             sut.invoice["performances"],
@@ -148,7 +149,7 @@ class TestStatement:
         assert actual == expected
 
     def test_total_amount(self):
-        sut = Statement(fixtures.invoice, fixtures.plays)
+        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
         data = StatementData(
             "customer",
             sut.invoice["performances"],
