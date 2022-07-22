@@ -20,6 +20,8 @@ class Statement:
     def enrich_performance(self, performance):
         result = performance.copy()
         result["play"] = self.play_for(performance)
+        result["amount"] = self.amount_for(result)
+        result["volume_credits"] = self.volume_credits_for(result)
         return result
 
     def __call__(self) -> str:
@@ -37,7 +39,7 @@ class Statement:
 
         for performance in data.performances:
             result += f'    {performance["play"]["name"]}: '
-            result += f"{self.usd(self.amount_for(performance))}"
+            result += self.usd(performance["amount"])
             result += f' ({performance["audience"]} seats)\n'
         result += "Amount owed is "
         result += f"{self.usd(self.total_amount(data.performances))}\n"
@@ -73,13 +75,13 @@ class Statement:
     def total_volume_credits(self, performances: List[Dict[str, Any]]):
         volume_credits: int = 0
         for performance in performances:
-            volume_credits += self.volume_credits_for(performance)
+            volume_credits += performance["volume_credits"]
         return volume_credits
 
     def total_amount(self, performances: List[Dict[str, Any]]):
         total_amount: int = 0
         for performance in performances:
-            total_amount += self.amount_for(performance)
+            total_amount += performance["amount"]
         return total_amount
 
     def usd(self, value: float) -> str:
