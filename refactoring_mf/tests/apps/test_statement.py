@@ -8,8 +8,13 @@ from refactoring_mf.apps.statement import Statement, StatementData
 class TestStatement:
     @patch("refactoring_mf.apps.statement.Statement.render_plain_text")
     def test_call(self, render_plain_text):
-        statement_data = StatementData("customer", "performances")
         sut = Statement(fixtures.invoice, fixtures.plays)
+        statement_data = StatementData(
+            "customer",
+            "performances",
+            sut.total_amount(sut.invoice["performances"]),
+            sut.total_volume_credits(sut.invoice["performances"]),
+        )
         sut()
 
         render_plain_text.has_called_assert_once_with(statement_data)
@@ -26,7 +31,10 @@ class TestStatement:
 
         sut = Statement(fixtures.invoice, fixtures.plays)
         data = StatementData(
-            sut.invoice["customer"], sut.invoice["performances"]
+            sut.invoice["customer"],
+            sut.invoice["performances"],
+            sut.total_amount(sut.invoice["performances"]),
+            sut.total_volume_credits(sut.invoice["performances"]),
         )
         actual_separated = sut.render_plain_text(data).split("\n")
 
@@ -128,7 +136,12 @@ class TestStatement:
 
     def test_total_volume_credits(self):
         sut = Statement(fixtures.invoice, fixtures.plays)
-        data = StatementData("customer", sut.invoice["performances"])
+        data = StatementData(
+            "customer",
+            sut.invoice["performances"],
+            sut.total_amount(sut.invoice["performances"]),
+            sut.total_volume_credits(sut.invoice["performances"]),
+        )
         actual = sut.total_volume_credits(data.performances)
         expected = 47
 
@@ -136,7 +149,12 @@ class TestStatement:
 
     def test_total_amount(self):
         sut = Statement(fixtures.invoice, fixtures.plays)
-        data = StatementData("customer", sut.invoice["performances"])
+        data = StatementData(
+            "customer",
+            sut.invoice["performances"],
+            sut.total_amount(sut.invoice["performances"]),
+            sut.total_volume_credits(sut.invoice["performances"]),
+        )
         actual = sut.total_amount(data.performances)
         expected = 173000
 

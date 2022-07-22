@@ -7,6 +7,8 @@ from typing import Dict, List, Any
 class StatementData:
     customer: str
     performances: List[Dict[str, Any]]
+    total_amount: int
+    total_volume_credits: int
 
 
 class Statement:
@@ -28,6 +30,8 @@ class Statement:
         statement_data = StatementData(
             self.invoice["customer"],
             self.invoice["performances"],
+            self.total_amount(self.invoice["performances"]),
+            self.total_volume_credits(self.invoice["performances"]),
         )
         return self.render_plain_text(statement_data)
 
@@ -41,10 +45,8 @@ class Statement:
             result += f'    {performance["play"]["name"]}: '
             result += self.usd(performance["amount"])
             result += f' ({performance["audience"]} seats)\n'
-        result += "Amount owed is "
-        result += f"{self.usd(self.total_amount(data.performances))}\n"
-        result += "You earned "
-        result += f"{self.total_volume_credits(data.performances)} credits\n"
+        result += f"Amount owed is {self.usd(data.total_amount)}\n"
+        result += f"You earned {data.total_volume_credits} credits\n"
         return result
 
     def amount_for(self, performance: Dict[str, Any]):
