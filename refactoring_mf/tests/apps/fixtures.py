@@ -1,13 +1,11 @@
-invoice = [
-    {
-        "customer": "BigCo",
-        "performances": [
-            {"playID": "hamlet", "audience": 55},
-            {"playID": "as-like", "audience": 35},
-            {"playID": "othello", "audience": 40},
-        ],
-    }
-]
+invoice = {
+    "customer": "BigCo",
+    "performances": [
+        {"playID": "hamlet", "audience": 55},
+        {"playID": "as-like", "audience": 35},
+        {"playID": "othello", "audience": 40},
+    ],
+}
 plays = {
     "hamlet": {"name": "Hamlet", "type": "tragedy"},
     "as-like": {"name": "As You Like It", "type": "comedy"},
