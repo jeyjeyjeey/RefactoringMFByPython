@@ -13,6 +13,79 @@ from refactoring_mf.apps.statement import (
 )
 
 
+class TestPerformanceCalculatorFactory:
+    test_cpc_input = [
+        (
+            "tragedy",
+            {"playID": "hamlet", "audience": 55},
+            {"name": "Hamlet", "type": "tragedy"},
+        ),
+        (
+            "comedy",
+            {"playID": "as-like", "audience": 35},
+            {"name": "As You Like It", "type": "comedy"},
+        ),
+    ]
+
+    @pytest.mark.parametrize("play_type, performance, play", test_cpc_input)
+    @patch("refactoring_mf.apps.statement.ComedyCalculator")
+    @patch("refactoring_mf.apps.statement.TragedyCalculator")
+    def test_create(
+        self,
+        tragedy_calculator_cls,
+        comedy_calculator_cls,
+        play_type,
+        performance,
+        play,
+    ):
+        PerformanceCalculatorFactory.create(performance, play)
+
+        if play_type == "tragedy":
+            tragedy_calculator_cls.assert_called_once_with(performance, play)
+        elif play_type == "comedy":
+            comedy_calculator_cls.assert_called_once_with(performance, play)
+
+    def test_create_performance_calculator_unknown_play_type(self):
+        with pytest.raises(ValueError):
+            PerformanceCalculatorFactory.create(
+                {"playID": "XXX", "audience": 99},
+                {"name": "XXXXX", "type": "X"},
+            )
+
+
+class TestPerformanceCalculator:
+    def test_init(self):
+        performance = {"playID": "hamlet", "audience": 55}
+        play = {"name": "Hamlet", "type": "tragedy"}
+        sut = PerformanceCalculator(performance, play)
+
+        assert sut.performance == performance
+        assert sut.play == play
+
+    def test_amount(self):
+        perfomance = (
+            {
+                "playID": "XXX",
+                "audience": 99,
+            },
+        )
+        play = {"name": "XXXXX", "type": "XXXXX"}
+
+        sut = PerformanceCalculator(perfomance, play)
+        with pytest.raises(NotImplementedError):
+            sut.amount()
+
+    def test_volume_credits(self):
+        performance = {
+            "playID": "XXX",
+            "audience": 99,
+        }
+        play = {"name": "XXXXX", "type": "XXXXX"}
+        sut = PerformanceCalculator(performance, play)
+        with pytest.raises(NotImplementedError):
+            sut.volume_credits()
+
+
 class TestTragedyCalculator:
     def test_init(self):
         performance = {"playID": "hamlet", "audience": 55}
@@ -34,6 +107,19 @@ class TestTragedyCalculator:
 
         sut = TragedyCalculator(performance, play)
         actual = sut.amount()
+
+        assert actual == expected
+
+    def test_volume_credits(self):
+        play = {"name": "Hamlet", "type": "tragedy"}
+        performance = {
+            "playID": "hamlet",
+            "audience": 55,
+        }
+        expected = 25
+
+        sut = TragedyCalculator(performance, play)
+        actual = sut.volume_credits()
 
         assert actual == expected
 
@@ -62,80 +148,7 @@ class TestComedyCalculator:
 
         assert actual == expected
 
-
-class TestPerformanceCalculatorFactory:
-    test_cpc_input = [
-        (
-            "tragedy",
-            {"playID": "hamlet", "audience": 55},
-            {"name": "Hamlet", "type": "tragedy"},
-        ),
-        (
-            "comedy",
-            {"playID": "as-like", "audience": 35},
-            {"name": "As You Like It", "type": "comedy"},
-        ),
-    ]
-
-    @pytest.mark.parametrize("play_type, performance, play", test_cpc_input)
-    @patch("refactoring_mf.apps.statement.ComedyCalculator")
-    @patch("refactoring_mf.apps.statement.TragedyCalculator")
-    def test_create_performance_calculator(
-        self,
-        tragedy_calculator_cls,
-        comedy_calculator_cls,
-        play_type,
-        performance,
-        play,
-    ):
-        PerformanceCalculatorFactory.create_performance_calculator(
-            performance, play
-        )
-
-        if play_type == "tragedy":
-            tragedy_calculator_cls.assert_called_once_with(performance, play)
-        elif play_type == "comedy":
-            comedy_calculator_cls.assert_called_once_with(performance, play)
-
-    def test_create_performance_calculator_unknown_play_type(self):
-        with pytest.raises(ValueError):
-            PerformanceCalculatorFactory.create_performance_calculator(
-                {"playID": "XXX", "audience": 99},
-                {"name": "XXXXX", "type": "X"},
-            )
-
-
-class TestPerformanceCalculator:
-    def test_init(self):
-        performance = {"playID": "hamlet", "audience": 55}
-        play = {"name": "Hamlet", "type": "tragedy"}
-        sut = PerformanceCalculator(performance, play)
-
-        assert sut.performance == performance
-        assert sut.play == play
-
-    def test_amount(self):
-        perfomance = (
-            {
-                "playID": "XXX",
-                "audience": 99,
-            },
-        )
-        play = {"name": "XXXXX", "type": "XXXXX"}
-
-        sut = PerformanceCalculator(perfomance, play)
-        with pytest.raises(NotImplementedError):
-            sut.amount()
-
-    test_volume_credits_inputs = [
-        (
-            {"name": "Hamlet", "type": "tragedy"},
-            {
-                "playID": "hamlet",
-                "audience": 55,
-            },
-            25,
-        ),
+    test_comedy_volume_credits_inputs = [
         (
             {"name": "As You Like It", "type": "comedy"},
             {
@@ -155,10 +168,10 @@ class TestPerformanceCalculator:
     ]
 
     @pytest.mark.parametrize(
-        "play, performance, expected", test_volume_credits_inputs
+        "play, performance, expected", test_comedy_volume_credits_inputs
     )
     def test_volume_credits(self, play, performance, expected):
-        sut = PerformanceCalculator(performance, play)
+        sut = ComedyCalculator(performance, play)
         actual = sut.volume_credits()
 
         assert actual == expected

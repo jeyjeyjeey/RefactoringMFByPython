@@ -13,9 +13,7 @@ class StatementData:
 
 class PerformanceCalculatorFactory:
     @staticmethod
-    def create_performance_calculator(
-        performance: Dict[str, Any], play: Dict[str, Any]
-    ):
+    def create(performance: Dict[str, Any], play: Dict[str, Any]):
         if play["type"] == "tragedy":
             return TragedyCalculator(performance, play)
         elif play["type"] == "comedy":
@@ -35,11 +33,7 @@ class PerformanceCalculator:
         raise NotImplementedError("This is subclass responsibility")
 
     def volume_credits(self):
-        result: int = 0
-        result += max(self.performance["audience"] - 30, 0)
-        if "comedy" == self.play["type"]:
-            result += floor(self.performance["audience"] / 5)
-        return result
+        raise NotImplementedError("This is subclass responsibility")
 
 
 class TragedyCalculator(PerformanceCalculator):
@@ -49,6 +43,9 @@ class TragedyCalculator(PerformanceCalculator):
             result += 1000 * (self.performance["audience"] - 30)
         return result
 
+    def volume_credits(self):
+        return max(self.performance["audience"] - 30, 0)
+
 
 class ComedyCalculator(PerformanceCalculator):
     def amount(self):
@@ -57,6 +54,11 @@ class ComedyCalculator(PerformanceCalculator):
             result += 10000 + 500 * (self.performance["audience"] - 20)
         result += 300 * self.performance["audience"]
         return result
+
+    def volume_credits(self):
+        return max(self.performance["audience"] - 30, 0) + floor(
+            self.performance["audience"] / 5
+        )
 
 
 class StatementDataCreator:
