@@ -38,6 +38,31 @@ class TestTragedyCalculator:
         assert actual == expected
 
 
+class TestComedyCalculator:
+    def test_init(self):
+        performance = {"playID": "hamlet", "audience": 55}
+        play = {"name": "Hamlet", "type": "tragedy"}
+        sut = ComedyCalculator(performance, play)
+
+        assert issubclass(ComedyCalculator, PerformanceCalculator)
+        assert sut.performance == performance
+        assert sut.play == play
+
+    def test_amount(self):
+        play = {"name": "As You Like It", "type": "comedy"}
+        performance = {
+            "play": {"name": "As You Like It", "type": "comedy"},
+            "playID": "as-like",
+            "audience": 35,
+        }
+        expected = 58000
+
+        sut = ComedyCalculator(performance, play)
+        actual = sut.amount()
+
+        assert actual == expected
+
+
 class TestPerformanceCalculatorFactory:
     test_cpc_input = [
         (
@@ -89,26 +114,7 @@ class TestPerformanceCalculator:
         assert sut.performance == performance
         assert sut.play == play
 
-    amount_inputs = [
-        (
-            {"name": "As You Like It", "type": "comedy"},
-            {
-                "play": {"name": "As You Like It", "type": "comedy"},
-                "playID": "as-like",
-                "audience": 35,
-            },
-            58000,
-        ),
-    ]
-
-    @pytest.mark.parametrize("play, performance, expected", amount_inputs)
-    def test_amount(self, play, performance, expected):
-        sut = PerformanceCalculator(performance, play)
-        actual = sut.amount()
-
-        assert actual == expected
-
-    def test_amount_for_with_unknown_type(self):
+    def test_amount(self):
         perfomance = (
             {
                 "playID": "XXX",
@@ -118,7 +124,7 @@ class TestPerformanceCalculator:
         play = {"name": "XXXXX", "type": "XXXXX"}
 
         sut = PerformanceCalculator(perfomance, play)
-        with pytest.raises(ValueError):
+        with pytest.raises(NotImplementedError):
             sut.amount()
 
     test_volume_credits_inputs = [

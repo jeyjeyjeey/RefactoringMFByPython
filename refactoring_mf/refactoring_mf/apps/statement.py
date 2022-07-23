@@ -32,17 +32,7 @@ class PerformanceCalculator:
         self.play = play
 
     def amount(self):
-        result = 0
-        if self.play["type"] == "tragedy":
-            raise ValueError("This is responsibility of subclass")
-        elif self.play["type"] == "comedy":
-            result = 30000
-            if self.performance["audience"] > 20:
-                result += 10000 + 500 * (self.performance["audience"] - 20)
-            result += 300 * self.performance["audience"]
-        else:
-            raise ValueError(f'Unknown type: {self.play["type"]}')
-        return result
+        raise NotImplementedError("This is subclass responsibility")
 
     def volume_credits(self):
         result: int = 0
@@ -60,8 +50,13 @@ class TragedyCalculator(PerformanceCalculator):
         return result
 
 
-class ComedyCalculator:
-    ...
+class ComedyCalculator(PerformanceCalculator):
+    def amount(self):
+        result = 30000
+        if self.performance["audience"] > 20:
+            result += 10000 + 500 * (self.performance["audience"] - 20)
+        result += 300 * self.performance["audience"]
+        return result
 
 
 class StatementDataCreator:
