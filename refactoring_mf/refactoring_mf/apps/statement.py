@@ -11,18 +11,44 @@ class StatementData:
     total_volume_credits: int
 
 
+class PerformanceCalculator:
+    def __init__(
+        self, performance: Dict[str, Any], play: Dict[str, Any]
+    ) -> None:
+        self.performance = performance
+        self.play = play
+
+    def amount(self):
+        result = 0
+        if self.play["type"] == "tragedy":
+            result = 40000
+            if self.performance["audience"] > 30:
+                result += 1000 * (self.performance["audience"] - 30)
+        elif self.play["type"] == "comedy":
+            result = 30000
+            if self.performance["audience"] > 20:
+                result += 10000 + 500 * (self.performance["audience"] - 20)
+            result += 300 * self.performance["audience"]
+        else:
+            raise Exception(f'Unknown type: {self.play["type"]}')
+        return result
+
+
 class StatementDataCreator:
     def __init__(self, invoice: Dict[str, Any], plays: Dict[str, Any]):
         self.invoice = invoice
         self.plays = plays
         self.invoice["performances"] = list(
-            map(self.enrich_performance, self.invoice["performances"])
+            map(self._enrich_performance, self.invoice["performances"])
         )
 
-    def enrich_performance(self, performance):
+    def _enrich_performance(self, performance):
+        calculator = PerformanceCalculator(
+            performance, self.play_for(performance)
+        )
         result = performance.copy()
-        result["play"] = self.play_for(performance)
-        result["amount"] = self.amount_for(result)
+        result["play"] = calculator.play
+        result["amount"] = calculator.amount()
         result["volume_credits"] = self.volume_credits_for(result)
         return result
 
@@ -35,19 +61,9 @@ class StatementDataCreator:
         )
 
     def amount_for(self, performance: Dict[str, Any]):
-        result = 0
-        if performance["play"]["type"] == "tragedy":
-            result = 40000
-            if performance["audience"] > 30:
-                result += 1000 * (performance["audience"] - 30)
-        elif performance["play"]["type"] == "comedy":
-            result = 30000
-            if performance["audience"] > 20:
-                result += 10000 + 500 * (performance["audience"] - 20)
-            result += 300 * performance["audience"]
-        else:
-            raise Exception(f'Unknown type: {performance["play"]["type"]}')
-        return result
+        return PerformanceCalculator(
+            performance, self.play_for(performance)
+        ).amount()
 
     def play_for(self, performance: Dict[str, Any]) -> str:
         return self.plays[performance["playID"]]

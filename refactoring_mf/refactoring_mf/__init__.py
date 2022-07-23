@@ -15,8 +15,8 @@ def main():
     statement_data = StatementDataCreator(
         get_data_from_json(args.invoice_json_file_path)[0],
         get_data_from_json("plays"),
-    )
-    out = StatementRenderer(statement_data)
+    )()
+    out = StatementRenderer.render_plain_text(statement_data)
 
     print(out)
 
