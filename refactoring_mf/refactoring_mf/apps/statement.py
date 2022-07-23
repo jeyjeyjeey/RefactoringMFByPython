@@ -33,6 +33,13 @@ class PerformanceCalculator:
             raise Exception(f'Unknown type: {self.play["type"]}')
         return result
 
+    def volume_credits(self):
+        result: int = 0
+        result += max(self.performance["audience"] - 30, 0)
+        if "comedy" == self.play["type"]:
+            result += floor(self.performance["audience"] / 5)
+        return result
+
 
 class StatementDataCreator:
     def __init__(self, invoice: Dict[str, Any], plays: Dict[str, Any]):
@@ -49,7 +56,7 @@ class StatementDataCreator:
         result = performance.copy()
         result["play"] = calculator.play
         result["amount"] = calculator.amount()
-        result["volume_credits"] = self.volume_credits_for(result)
+        result["volume_credits"] = calculator.volume_credits()
         return result
 
     def __call__(self) -> str:
@@ -67,13 +74,6 @@ class StatementDataCreator:
 
     def play_for(self, performance: Dict[str, Any]) -> str:
         return self.plays[performance["playID"]]
-
-    def volume_credits_for(self, performance: Dict[str, Any]):
-        result: int = 0
-        result += max(performance["audience"] - 30, 0)
-        if "comedy" == performance["play"]["type"]:
-            result += floor(performance["audience"] / 5)
-        return result
 
     def total_volume_credits(self, performances: List[Dict[str, Any]]):
         volume_credits: int = 0
