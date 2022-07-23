@@ -11,6 +11,19 @@ class StatementData:
     total_volume_credits: int
 
 
+class PerformanceCalculatorFactory:
+    @staticmethod
+    def create_performance_calculator(
+        performance: Dict[str, Any], play: Dict[str, Any]
+    ):
+        if play["type"] == "tragedy":
+            return TragedyCalculator(performance, play)
+        elif play["type"] == "comedy":
+            return ComedyCalculator(performance, play)
+        else:
+            raise ValueError(f"Unknown play type: {play['type']}")
+
+
 class PerformanceCalculator:
     def __init__(
         self, performance: Dict[str, Any], play: Dict[str, Any]
@@ -21,16 +34,14 @@ class PerformanceCalculator:
     def amount(self):
         result = 0
         if self.play["type"] == "tragedy":
-            result = 40000
-            if self.performance["audience"] > 30:
-                result += 1000 * (self.performance["audience"] - 30)
+            raise ValueError("This is responsibility of subclass")
         elif self.play["type"] == "comedy":
             result = 30000
             if self.performance["audience"] > 20:
                 result += 10000 + 500 * (self.performance["audience"] - 20)
             result += 300 * self.performance["audience"]
         else:
-            raise Exception(f'Unknown type: {self.play["type"]}')
+            raise ValueError(f'Unknown type: {self.play["type"]}')
         return result
 
     def volume_credits(self):
@@ -39,6 +50,18 @@ class PerformanceCalculator:
         if "comedy" == self.play["type"]:
             result += floor(self.performance["audience"] / 5)
         return result
+
+
+class TragedyCalculator(PerformanceCalculator):
+    def amount(self):
+        result = 40000
+        if self.performance["audience"] > 30:
+            result += 1000 * (self.performance["audience"] - 30)
+        return result
+
+
+class ComedyCalculator:
+    ...
 
 
 class StatementDataCreator:
@@ -50,8 +73,10 @@ class StatementDataCreator:
         )
 
     def _enrich_performance(self, performance):
-        calculator = PerformanceCalculator(
-            performance, self.play_for(performance)
+        calculator = (
+            PerformanceCalculatorFactory.create_performance_calculator(
+                performance, self.play_for(performance)
+            )
         )
         result = performance.copy()
         result["play"] = calculator.play
@@ -66,11 +91,6 @@ class StatementDataCreator:
             self.total_amount(self.invoice["performances"]),
             self.total_volume_credits(self.invoice["performances"]),
         )
-
-    def amount_for(self, performance: Dict[str, Any]):
-        return PerformanceCalculator(
-            performance, self.play_for(performance)
-        ).amount()
 
     def play_for(self, performance: Dict[str, Any]) -> str:
         return self.plays[performance["playID"]]

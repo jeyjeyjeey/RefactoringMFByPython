@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, call
 import pytest
 from tests.apps import fixtures
 
@@ -7,7 +7,77 @@ from refactoring_mf.apps.statement import (
     StatementData,
     StatementRenderer,
     PerformanceCalculator,
+    PerformanceCalculatorFactory,
+    TragedyCalculator,
+    ComedyCalculator,
 )
+
+
+class TestTragedyCalculator:
+    def test_init(self):
+        performance = {"playID": "hamlet", "audience": 55}
+        play = {"name": "Hamlet", "type": "tragedy"}
+        sut = TragedyCalculator(performance, play)
+
+        assert issubclass(TragedyCalculator, PerformanceCalculator)
+        assert sut.performance == performance
+        assert sut.play == play
+
+    def test_amount(self):
+        play = {"name": "Hamlet", "type": "tragedy"}
+        performance = {
+            "play": {"name": "Hamlet", "type": "tragedy"},
+            "playID": "hamlet",
+            "audience": 55,
+        }
+        expected = 65000
+
+        sut = TragedyCalculator(performance, play)
+        actual = sut.amount()
+
+        assert actual == expected
+
+
+class TestPerformanceCalculatorFactory:
+    test_cpc_input = [
+        (
+            "tragedy",
+            {"playID": "hamlet", "audience": 55},
+            {"name": "Hamlet", "type": "tragedy"},
+        ),
+        (
+            "comedy",
+            {"playID": "as-like", "audience": 35},
+            {"name": "As You Like It", "type": "comedy"},
+        ),
+    ]
+
+    @pytest.mark.parametrize("play_type, performance, play", test_cpc_input)
+    @patch("refactoring_mf.apps.statement.ComedyCalculator")
+    @patch("refactoring_mf.apps.statement.TragedyCalculator")
+    def test_create_performance_calculator(
+        self,
+        tragedy_calculator_cls,
+        comedy_calculator_cls,
+        play_type,
+        performance,
+        play,
+    ):
+        PerformanceCalculatorFactory.create_performance_calculator(
+            performance, play
+        )
+
+        if play_type == "tragedy":
+            tragedy_calculator_cls.assert_called_once_with(performance, play)
+        elif play_type == "comedy":
+            comedy_calculator_cls.assert_called_once_with(performance, play)
+
+    def test_create_performance_calculator_unknown_play_type(self):
+        with pytest.raises(ValueError):
+            PerformanceCalculatorFactory.create_performance_calculator(
+                {"playID": "XXX", "audience": 99},
+                {"name": "XXXXX", "type": "X"},
+            )
 
 
 class TestPerformanceCalculator:
@@ -20,15 +90,6 @@ class TestPerformanceCalculator:
         assert sut.play == play
 
     amount_inputs = [
-        (
-            {"name": "Hamlet", "type": "tragedy"},
-            {
-                "play": {"name": "Hamlet", "type": "tragedy"},
-                "playID": "hamlet",
-                "audience": 55,
-            },
-            65000,
-        ),
         (
             {"name": "As You Like It", "type": "comedy"},
             {
@@ -57,8 +118,8 @@ class TestPerformanceCalculator:
         play = {"name": "XXXXX", "type": "XXXXX"}
 
         sut = PerformanceCalculator(perfomance, play)
-        with pytest.raises(Exception):
-            sut.amount(perfomance)
+        with pytest.raises(ValueError):
+            sut.amount()
 
     test_volume_credits_inputs = [
         (
@@ -98,9 +159,9 @@ class TestPerformanceCalculator:
 
 
 class TestStatementDataCreator:
+    @patch("refactoring_mf.apps.statement.PerformanceCalculatorFactory")
     @patch("refactoring_mf.apps.statement.StatementDataCreator.play_for")
-    @patch("refactoring_mf.apps.statement.PerformanceCalculator")
-    def test_init(self, PerformanceCalculator, play_for):
+    def test_init(self, play_for, PCFacotry):
         invoice = {
             "customer": "BigCo",
             "performances": [
@@ -110,6 +171,17 @@ class TestStatementDataCreator:
         plays = {
             "hamlet": {"name": "Hamlet", "type": "tragedy"},
         }
+        PCFacotry.create_performance_calculator.return_value.volume_credits.return_value = (
+            25
+        )
+        PCFacotry.create_performance_calculator.return_value.amount.return_value = (
+            65000
+        )
+        play_for.return_value = {"name": "Hamlet", "type": "tragedy"}
+        PCFacotry.create_performance_calculator.return_value.play = (
+            play_for.return_value
+        )
+
         expected_invoice = {
             "customer": "BigCo",
             "performances": [
@@ -123,74 +195,60 @@ class TestStatementDataCreator:
             ],
         }
 
-        PerformanceCalculator.return_value.volume_credits.return_value = 25
-        PerformanceCalculator.return_value.amount.return_value = 65000
-        play_for.return_value = {"name": "Hamlet", "type": "tragedy"}
-        PerformanceCalculator.return_value.play = play_for.return_value
         sut = StatementDataCreator(invoice, plays)
 
-        PerformanceCalculator.assert_called_once()
+        PCFacotry.create_performance_calculator.assert_has_calls(
+            [
+                call(
+                    {"playID": "hamlet", "audience": 55},
+                    {"name": "Hamlet", "type": "tragedy"},
+                )
+            ]
+        )
         play_for.assert_called_once()
-        PerformanceCalculator.return_value.amount.assert_called_once()
-        PerformanceCalculator.return_value.volume_credits.assert_called_once()
+        PCFacotry.create_performance_calculator.return_value.amount.assert_called_once()
+        PCFacotry.create_performance_calculator.return_value.volume_credits.assert_called_once()
         assert sut.invoice == expected_invoice
         assert sut.plays == plays
 
-    @patch("refactoring_mf.apps.statement.StatementRenderer.render_plain_text")
-    def test_call(self, render_plain_text):
+    @pytest.fixture
+    @patch("refactoring_mf.apps.statement.StatementDataCreator.__init__")
+    def init_statement_data_creator_mocked(self, init):
+        init.return_value = None
         sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
-        statement_data = StatementData(
-            "customer",
-            "performances",
-            sut.total_amount(sut.invoice["performances"]),
-            sut.total_volume_credits(sut.invoice["performances"]),
-        )
+        sut.invoice = fixtures.invoice_enriched
+        sut.plays = fixtures.plays
+        return sut
+
+    @patch(
+        "refactoring_mf.apps.statement.StatementDataCreator.total_volume_credits"
+    )
+    @patch("refactoring_mf.apps.statement.StatementDataCreator.total_amount")
+    @patch("refactoring_mf.apps.statement.StatementData")
+    def test_call(
+        self,
+        StatementData,
+        total_amount,
+        total_volume_credits,
+        init_statement_data_creator_mocked,
+    ):
+        sut = init_statement_data_creator_mocked
         sut()
 
-        render_plain_text.has_called_assert_once_with(statement_data)
-
-    amount_for_inputs = [
-        (
-            {"name": "Hamlet", "type": "tragedy"},
-            {
-                "play": {"name": "Hamlet", "type": "tragedy"},
-                "playID": "hamlet",
-                "audience": 55,
-            },
-            65000,
-        ),
-        (
-            {"name": "As You Like It", "type": "comedy"},
-            {
-                "play": {"name": "As You Like It", "type": "comedy"},
-                "playID": "as-like",
-                "audience": 35,
-            },
-            58000,
-        ),
-    ]
-
-    @pytest.mark.parametrize("play, performance, expected", amount_for_inputs)
-    def test_amount_for(self, play, performance, expected):
-        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
-        actual = sut.amount_for(performance)
-
-        assert actual == expected
-
-    def test_amount_for_with_unknown_type(self):
-        perfomance = (
-            {
-                "play": {"name": "XXXXX", "type": "XXXXX"},
-                "playID": "XXX",
-                "audience": 99,
-            },
+        total_amount.assert_called_once_with(
+            fixtures.invoice_enriched["performances"]
+        )
+        total_volume_credits.assert_called_once_with(
+            fixtures.invoice_enriched["performances"]
+        )
+        StatementData.has_called_assert_once_with(
+            fixtures.invoice_enriched["customer"],
+            fixtures.invoice_enriched["performances"],
+            total_amount.return_value,
+            total_volume_credits.return_value,
         )
 
-        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
-        with pytest.raises(Exception):
-            sut.amount_for(perfomance)
-
-    def test_play_for(self):
+    def test_play_for(self, init_statement_data_creator_mocked):
         performance = {
             "play": {"name": "As You Like It", "type": "comedy"},
             "playID": "as-like",
@@ -201,33 +259,23 @@ class TestStatementDataCreator:
             "type": "comedy",
         }
 
-        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
+        sut = init_statement_data_creator_mocked
         actual = sut.play_for(performance)
 
         assert actual == expected
 
-    def test_total_volume_credits(self):
-        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
-        data = StatementData(
-            "customer",
-            sut.invoice["performances"],
-            sut.total_amount(sut.invoice["performances"]),
-            sut.total_volume_credits(sut.invoice["performances"]),
-        )
-        actual = sut.total_volume_credits(data.performances)
+    def test_total_volume_credits(self, init_statement_data_creator_mocked):
+        sut = init_statement_data_creator_mocked
+
+        actual = sut.total_volume_credits(sut.invoice["performances"])
         expected = 47
 
         assert actual == expected
 
-    def test_total_amount(self):
-        sut = StatementDataCreator(fixtures.invoice, fixtures.plays)
-        data = StatementData(
-            "customer",
-            sut.invoice["performances"],
-            sut.total_amount(sut.invoice["performances"]),
-            sut.total_volume_credits(sut.invoice["performances"]),
-        )
-        actual = sut.total_amount(data.performances)
+    def test_total_amount(self, init_statement_data_creator_mocked):
+        sut = init_statement_data_creator_mocked
+
+        actual = sut.total_amount(sut.invoice["performances"])
         expected = 173000
 
         assert actual == expected
@@ -244,9 +292,12 @@ class TestStatementDataRenderer:
             "You earned 47 credits",
         ]
 
-        statement_data = StatementDataCreator(
-            fixtures.invoice, fixtures.plays
-        )()
+        statement_data = StatementData(
+            fixtures.invoice_enriched["customer"],
+            fixtures.invoice_enriched["performances"],
+            173000,
+            47,
+        )
         sut = StatementRenderer()
         actual_separated = sut.render_plain_text(statement_data).split("\n")
 
